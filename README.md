@@ -1,6 +1,6 @@
-# Prime Shine
+# Woshico
 
-A plain HTML, CSS, and JavaScript rebuild of a premium car-care marketing site. It includes responsive landing, service, about, projects, journal, pricing, FAQ, contact, shop, team, and utility routes with SPA navigation and a static-host fallback.
+A plain HTML, CSS, and JavaScript rebuild of the Woshico car-wash marketing site. It includes the responsive landing page, service pages and detail routes, about, projects, journal and article routes, pricing tabs, FAQ, contact form, shop/checkout paths, team, and utility pages with client-side navigation and a static-host fallback.
 
 ## Run locally
 
@@ -12,4 +12,4 @@ Then open `http://localhost:4173/`.
 
 ## Deploy
 
-The site has no build step and can be deployed directly to any static host. Images are referenced from stable public CDNs; no Manus-local asset paths are used.
+The site has no build step and can be deployed directly to GitHub Pages or any static host. Visual media is referenced from the original public Webflow CDN, so the repository stays lightweight and does not depend on local-only storage.
