@@ -12,4 +12,8 @@ Then open `http://localhost:4173/`.
 
 ## Deploy
 
-The site has no build step and can be deployed directly to GitHub Pages or any static host. Visual media is referenced from the original public Webflow CDN, so the repository stays lightweight and does not depend on local-only storage.
+The site has no build step and is configured to deploy automatically to GitHub Pages from `main` via `.github/workflows/pages.yml`. The expected public URL is:
+
+`https://abdulanasbuilds.github.io/Auto-detailing/`
+
+Visual media is referenced from the original public Webflow CDN, so the repository stays lightweight and does not depend on local-only storage.
