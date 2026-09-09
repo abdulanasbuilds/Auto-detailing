@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   cleanup:
-    if: !startsWith(github.event.head_commit.message, 'Remove ecommerce and template leftovers')
+    if: ${{ !startsWith(github.event.head_commit.message, 'Remove ecommerce and template leftovers') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,7 +79,6 @@ jobs:
           for path in Path('.').rglob('*.html'):
               text = path.read_text(encoding='utf-8')
 
-              # Remove explicit Webflow attribution/branding without touching layout, CSS or fonts.
               text = text.replace('<!-- This site was created in Webflow. https://webflow.com -->', '')
               text = re.sub(r'<meta\s+content=["\']Webflow["\']\s+name=["\']generator["\']\s*/?>', '', text, flags=re.I)
               text = text.replace(' - Webflow Ecommerce website template', '')
@@ -87,19 +86,13 @@ jobs:
               text = text.replace('premium Webflow theme', 'premium theme')
               text = text.replace('Premium Webflow theme', 'Premium theme')
 
-              # Remove direct links to retired destinations from static markup.
               for href in sorted(targets, key=len, reverse=True):
                   pattern = re.compile(r'<a\b(?=[^>]*\bhref=["\']' + re.escape(href) + r'["\'])[^>]*>.*?</a>', re.I | re.S)
                   text = pattern.sub('', text)
 
-              if '</body>' in text.lower():
-                  text = re.sub(r'</body>', script + '</body>', text, count=1, flags=re.I)
-              else:
-                  text += script
-
+              text = re.sub(r'</body>', script + '</body>', text, count=1, flags=re.I) if re.search(r'</body>', text, re.I) else text + script
               path.write_text(text, encoding='utf-8')
 
-          # Retired ecommerce/template destinations are no longer part of this service site.
           for folder in ['shop', 'pricing-plan', 'checkout', 'utility-pages']:
               p = Path(folder)
               if p.exists():
