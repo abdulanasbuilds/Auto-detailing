@@ -1,0 +1,36 @@
+name: import-source-template
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout destination repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Download source repository archive
+        env:
+          ARCHIVE_URL: "https://sdmntprdenmarkeast.oaiusercontent.com/files/00000000-307c-8210-9b9a-5f78fbe38bd7/raw?se=2026-09-09T05%3A43%3A27Z&sp=r&sv=2026-02-06&sr=b&scid=783cf3c6-94d0-57d6-9570-397eb8e7c807&skoid=5c9dda00-298b-4376-81e9-b4568c8a3c0f&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-09T05%3A19%3A45Z&ske=2026-09-10T05%3A19%3A45Z&sks=b&skv=2026-02-06&sig=2rlNNj6iKmqb8PhlS0%2BidSBCZCDQx/clbPJr9aWNIFk%3D"
+        run: |
+          set -euo pipefail
+          curl -fL "$ARCHIVE_URL" -o /tmp/source-artifact.zip
+          unzip -q /tmp/source-artifact.zip -d /tmp/source-artifact
+          test -f /tmp/source-artifact/automobile-dealer-template.tar.gz
+          tar -xzf /tmp/source-artifact/automobile-dealer-template.tar.gz -C "$GITHUB_WORKSPACE"
+      - name: Remove one-time export workflow and importer
+        run: |
+          rm -f .github/workflows/export-copy.yml
+          rm -f .github/workflows/import-source.yml
+      - name: Commit exact template copy
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Copy automobile dealer website template exactly"
+          git push origin main
