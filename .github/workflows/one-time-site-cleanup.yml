@@ -15,58 +15,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clean exported site
-        run: python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          retired = (
-              '/shop',
-              '/pricing-plan',
-              '/checkout',
-              '/utility-pages/style-guide',
-              '/utility-pages/licenses',
-              '/utility-pages/changelog',
-          )
-
-          cleanup_js = r'''<script>
-(function(){
-  var retired=['/shop','/pricing-plan','/checkout','/utility-pages/style-guide','/utility-pages/licenses','/utility-pages/changelog'];
-  retired.forEach(function(h){document.querySelectorAll('a[href="'+h+'"]').forEach(function(a){(a.closest('li')||a).remove();});});
-  document.querySelectorAll('.w-webflow-badge,.w-commerce-commercecartwrapper,.w-commerce-commercecartopenlink,.w-commerce-commercecartcontainer-wrapper').forEach(function(e){e.remove();});
-  document.querySelectorAll('body *').forEach(function(e){var t=(e.textContent||'').trim();if(/^\$\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?(?:\s*(?:USD|GHS))?$/i.test(t))e.remove();});
-  document.querySelectorAll('body *').forEach(function(e){if(e.children.length===0&&/subscribe\s+to(?:\s+our)?\s+newsletter/i.test((e.textContent||'').trim())){var f=e.closest('form');if(f)f.remove();e.remove();}});
-  document.querySelectorAll('body *').forEach(function(e){if(e.children.length===0&&/^utility\s+pages$/i.test((e.textContent||'').trim()))e.remove();});
-})();
-</script>'''
-
-          for p in Path('.').rglob('*.html'):
-              s=p.read_text(encoding='utf-8')
-              s=s.replace('<!-- This site was created in Webflow. https://webflow.com -->','')
-              s=re.sub(r'<meta\s+content=["\']Webflow["\']\s+name=["\']generator["\']\s*/?>','',s,flags=re.I)
-              s=s.replace(' - Webflow Ecommerce website template','')
-              s=s.replace('Webflow Ecommerce website template','')
-              s=s.replace('premium Webflow theme','premium theme')
-              s=s.replace('Premium Webflow theme','Premium theme')
-              for h in retired:
-                  s=re.sub(r'<a\b(?=[^>]*\bhref=["\']'+re.escape(h)+r'["\'])[^>]*>.*?</a>','',s,flags=re.I|re.S)
-              if re.search(r'</body>',s,re.I):
-                  s=re.sub(r'</body>',cleanup_js+'</body>',s,count=1,flags=re.I)
-              else:
-                  s+=cleanup_js
-              p.write_text(s,encoding='utf-8')
-
-          for folder in ('shop','pricing-plan','checkout','utility-pages'):
-              root=Path(folder)
-              if root.exists():
-                  for child in sorted(root.rglob('*'),key=lambda x:len(x.parts),reverse=True):
-                      if child.is_file() or child.is_symlink(): child.unlink()
-                      elif child.is_dir(): child.rmdir()
-                  root.rmdir()
-
-          Path('.github/workflows/one-time-site-cleanup.yml').unlink()
-          Path('/tmp/cleanup-ready').write_text('ready')
-          PY
+      - name: Apply requested site removals
+        run: python3 cleanup_site.py
 
       - name: Commit final cleanup
         run: |
