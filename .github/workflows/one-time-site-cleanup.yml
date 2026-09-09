@@ -1,0 +1,122 @@
+name: One-time site cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: !startsWith(github.event.head_commit.message, 'Remove ecommerce and template leftovers')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clean exported HTML
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          targets = {
+              '/shop',
+              '/pricing-plan',
+              '/checkout',
+              '/utility-pages/style-guide',
+              '/utility-pages/licenses',
+              '/utility-pages/changelog',
+          }
+
+          script = r'''<script>
+(function () {
+  var linkTargets = [
+    '/shop',
+    '/pricing-plan',
+    '/checkout',
+    '/utility-pages/style-guide',
+    '/utility-pages/licenses',
+    '/utility-pages/changelog'
+  ];
+
+  linkTargets.forEach(function (href) {
+    document.querySelectorAll('a[href="' + href + '"]').forEach(function (a) {
+      var li = a.closest('li');
+      (li || a).remove();
+    });
+  });
+
+  document.querySelectorAll(
+    '.w-webflow-badge, .w-commerce-commercecartwrapper, .w-commerce-commercecartopenlink, .w-commerce-commercecartcontainer-wrapper'
+  ).forEach(function (el) { el.remove(); });
+
+  document.querySelectorAll('body *').forEach(function (el) {
+    var text = (el.textContent || '').trim();
+    if (/^\$\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?(?:\s*(?:USD|GHS))?$/i.test(text)) {
+      el.remove();
+    }
+  });
+
+  var newsletterLeaves = Array.prototype.filter.call(document.querySelectorAll('body *'), function (el) {
+    return el.children.length === 0 && /subscribe\s+to(?:\s+our)?\s+newsletter/i.test((el.textContent || '').trim());
+  });
+  newsletterLeaves.forEach(function (el) {
+    var form = el.closest('form');
+    if (form) form.remove();
+    el.remove();
+  });
+
+  document.querySelectorAll('body *').forEach(function (el) {
+    if (el.children.length === 0 && /^utility\s+pages$/i.test((el.textContent || '').trim())) {
+      el.remove();
+    }
+  });
+})();
+</script>'''
+
+          for path in Path('.').rglob('*.html'):
+              text = path.read_text(encoding='utf-8')
+
+              # Remove explicit Webflow attribution/branding without touching layout, CSS or fonts.
+              text = text.replace('<!-- This site was created in Webflow. https://webflow.com -->', '')
+              text = re.sub(r'<meta\s+content=["\']Webflow["\']\s+name=["\']generator["\']\s*/?>', '', text, flags=re.I)
+              text = text.replace(' - Webflow Ecommerce website template', '')
+              text = text.replace('Webflow Ecommerce website template', '')
+              text = text.replace('premium Webflow theme', 'premium theme')
+              text = text.replace('Premium Webflow theme', 'Premium theme')
+
+              # Remove direct links to retired destinations from static markup.
+              for href in sorted(targets, key=len, reverse=True):
+                  pattern = re.compile(r'<a\b(?=[^>]*\bhref=["\']' + re.escape(href) + r'["\'])[^>]*>.*?</a>', re.I | re.S)
+                  text = pattern.sub('', text)
+
+              if '</body>' in text.lower():
+                  text = re.sub(r'</body>', script + '</body>', text, count=1, flags=re.I)
+              else:
+                  text += script
+
+              path.write_text(text, encoding='utf-8')
+
+          # Retired ecommerce/template destinations are no longer part of this service site.
+          for folder in ['shop', 'pricing-plan', 'checkout', 'utility-pages']:
+              p = Path(folder)
+              if p.exists():
+                  for child in sorted(p.rglob('*'), reverse=True):
+                      if child.is_file() or child.is_symlink():
+                          child.unlink()
+                      elif child.is_dir():
+                          child.rmdir()
+                  p.rmdir()
+
+          Path('.github/workflows/one-time-site-cleanup.yml').unlink()
+
+      - name: Commit final cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "Remove ecommerce and template leftovers"
+          git push
