@@ -1,11 +1,12 @@
 name: import-source-template
 on:
-  push:
-    branches: [main]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 permissions:
   contents: write
 jobs:
   import:
+    if: github.event.action == 'opened' || github.event.action == 'synchronize'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout destination repository
@@ -21,7 +22,7 @@ jobs:
           unzip -q /tmp/source-artifact.zip -d /tmp/source-artifact
           test -f /tmp/source-artifact/automobile-dealer-template.tar.gz
           tar -xzf /tmp/source-artifact/automobile-dealer-template.tar.gz -C "$GITHUB_WORKSPACE"
-      - name: Remove one-time export workflow and importer
+      - name: Remove one-time tooling
         run: |
           rm -f .github/workflows/export-copy.yml
           rm -f .github/workflows/import-source.yml
@@ -33,4 +34,4 @@ jobs:
           git add -A
           git diff --cached --quiet && exit 0
           git commit -m "Copy automobile dealer website template exactly"
-          git push origin main
+          git push origin HEAD:main
